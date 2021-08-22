@@ -658,23 +658,23 @@ static void yals_rds (RDS * r) {
 /*------------------------------------------------------------------------*/
 
 void yals_srand (Yals * yals, unsigned long long seed) {
-  unsigned long long z = seed >> 32, w = seed;
+  unsigned z = seed >> 32, w = seed;
   if (!z) z = ~z;
   if (!w) w = ~w;
   yals->rng.z = z, yals->rng.w = w;
   yals_msg (yals, 2, "setting random seed %llu", seed);
 }
 
-static unsigned long long yals_rand (Yals * yals) {
-  unsigned long long res;
+static unsigned yals_rand (Yals * yals) {
+  unsigned res;
   yals->rng.z = 36969 * (yals->rng.z & 65535) + (yals->rng.z >> 16);
   yals->rng.w = 18000 * (yals->rng.w & 65535) + (yals->rng.w >> 16);
   res = (yals->rng.z << 16) + yals->rng.w;
   return res;
 }
 
-static unsigned long long yals_rand_mod (Yals * yals, unsigned long long mod) {
-  unsigned long long res;
+static unsigned yals_rand_mod (Yals * yals, unsigned mod) {
+  unsigned res;
   assert (mod >= 1);
   if (mod <= 1) return 0;
   res = yals_rand (yals);
@@ -2672,18 +2672,18 @@ static void yals_set_default_strategy (Yals * yals) {
 /*------------------------------------------------------------------------*/
 
 static long long yals_rand_opt (Yals * yals, Opt * opt, const char * name) {
-  unsigned long long mod, r;
-  long long res;
+  unsigned mod, r;
+  int res;
   mod = opt->max;
   mod -= opt->min;
   mod++;
   if (mod) {
     r = yals_rand_mod (yals, mod);
-    res = (long long)(r + (unsigned) opt->min);
+    res = (int)(r + (unsigned) opt->min);
   } else {
     assert (opt->min == INT_MIN);
     assert (opt->max == INT_MAX);
-    res = (long long) yals_rand (yals);
+    res = (int) yals_rand (yals);
   }
   assert (opt->min <= res), assert (res <= opt->max);
   (void) name;
