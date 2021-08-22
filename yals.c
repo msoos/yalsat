@@ -18,6 +18,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/time.h>
@@ -151,7 +152,7 @@ typedef unsigned Word;
 
 #define MIN(A,B) (((A) < (B)) ? (A) : (B))
 #define MAX(A,B) (((A) > (B)) ? (A) : (B))
-#define ABS(A) (((A) < 0) ? (assert ((A) != INT_MIN), -(A)) : (A))
+#define ABS(A) (((A) < 0) ? (assert ((A) != LLONG_MIN), -(A)) : (A))
 
 #define SWAP(T,A,B) \
   do { T TMP = (A); (A) = (B); (B) = (TMP); } while (0)
@@ -166,7 +167,7 @@ do { \
 } while (0)
 #define LOGLITS(LITS,ARGS...) \
 do { \
-  const int * P; \
+  const long long * P; \
   if (!yals->opts.logging.val) break; \
   yals_log_start (yals, ##ARGS); \
   fprintf (yals->out, " clause :"); \
@@ -176,12 +177,12 @@ do { \
 } while (0)
 #define LOGCIDX(CIDX,ARGS...) \
 do { \
-  const int * P, * LITS = yals_lits (yals, (CIDX)); \
+  const long long * P, * LITS = yals_lits (yals, (CIDX)); \
   if (!yals->opts.logging.val) break; \
   yals_log_start (yals, ##ARGS); \
   fprintf (yals->out, " clause %d :", (CIDX)); \
   for (P = (LITS); *P; P++) \
-    fprintf (yals->out, " %d", *P); \
+    fprintf (yals->out, " %lld", *P); \
   yals_log_end (yals); \
 } while (0)
 #else
@@ -262,7 +263,7 @@ enum ClausePicking {
   STRAT (uni,1); \
   STRAT (weight,1);
 
-#define STRAT(NAME,ENABLED) int NAME
+#define STRAT(NAME,ENABLED) long long NAME
 
 /*------------------------------------------------------------------------*/
 
@@ -299,9 +300,9 @@ do { \
 
 /*------------------------------------------------------------------------*/
 
-typedef struct RDS { unsigned u, v; } RDS;
+typedef struct RDS { unsigned long long u, v; } RDS;
 
-typedef struct RNG { unsigned z, w; } RNG;
+typedef struct RNG { unsigned long long z, w; } RNG;
 
 typedef struct Mem {
   void * mgr;
@@ -313,13 +314,13 @@ typedef struct Mem {
 typedef struct Strat { STRATSTEMPLATE } Strat;
 
 typedef struct Stats {
-  int best, worst, last, tmp, maxstacksize;
+  long long best, worst, last, tmp, maxstacksize;
   int64_t flips, bzflips, hits, unsum;
   struct {
     struct { int64_t count; } outer;
     struct { int64_t count, maxint; } inner;
   } restart;
-  struct { struct { int chunks, lnks; } max; int64_t unfair; } queue;
+  struct { struct { long long chunks, lnks; } max; int64_t unfair; } queue;
   struct { int64_t inserted, replaced, skipped; } cache;
   struct { int64_t search, neg, falsepos, truepos; } sig;
   struct { int64_t def, rnd; } strat;
@@ -328,14 +329,14 @@ typedef struct Stats {
   struct { size_t current, max; } allocated;
   struct { volatile double total, defrag, restart, entered; } time;
 #ifdef __GNUC__
-  volatile int flushing_time;
+  volatile long long flushing_time;
 #endif
 #ifndef NYALSMEMS
   struct { long long all, crit, lits, occs, read, update, weight; } mems;
 #endif
 #ifndef NYALSTATS
-  int64_t * inc, * dec, broken, made; int nincdec;
-  struct { unsigned min, max; } wb;
+  int64_t * inc, * dec, broken, made; long long nincdec;
+  struct { unsigned long long min, max; } wb;
 #endif
 } Stats;
 
@@ -348,39 +349,39 @@ typedef struct Limits {
     struct { int64_t lim, interval; } outer;
     struct { int64_t lim; union { int64_t interval; RDS rds; }; } inner;
   } restart;
-  struct { int min; } report;
-  int term;
+  struct { long long min; } report;
+  long long term;
 } Limits;
 
 typedef struct Lnk {
-  int cidx;
+  long long cidx;
   struct Lnk * prev, * next;
 } Lnk;
 
 typedef union Chunk {
-  struct { int size; union Chunk * next; };
+  struct { long long size; union Chunk * next; };
   Lnk lnks[1];					// actually of 'size'
 } Chunk;
 
 typedef struct Queue {
-  int count, chunksize, nchunks, nlnks, nfree;
+  long long count, chunksize, nchunks, nlnks, nfree;
   Lnk * first, * last, * free;
   Chunk * chunks; 
 } Queue;
 
 typedef struct Exp {
   struct { STACK(double) two, cb; } table;
-  struct { unsigned two, cb; } max;
+  struct { unsigned long long two, cb; } max;
   struct { double two, cb; } eps;
 } Exp;
 
-typedef struct Opt { int val, def, min, max; } Opt;
+typedef struct Opt { long long val, def, min, max; } Opt;
 
 typedef struct Opts { char * prefix; OPTSTEMPLATE } Opts;
 
 typedef struct Callbacks {
   double (*time)(void);
-  struct { void * state; int (*fun)(void*); } term;
+  struct { void * state; long long (*fun)(void*); } term;
   struct { void * state; void (*lock)(void*); void (*unlock)(void*); } msg;
 } Callbacks;
 
@@ -392,26 +393,26 @@ typedef struct FPU {
 #ifdef __linux__
   fpu_control_t control;
 #endif
-  int saved;
+  long long saved;
 } FPU;
 
 struct Yals {
   RNG rng;
   FILE * out;
-  struct { int usequeue; Queue queue; STACK(int) stack; } unsat;
-  int nvars, * refs; int64_t * flips;
+  struct { long long usequeue; Queue queue; STACK(long long) stack; } unsat;
+  long long nvars, * refs; int64_t * flips;
   STACK(signed char) mark;
-  int trivial, mt, uniform, pick;
-  Word * vals, * best, * tmp, * clear, * set; int nvarwords;
-  STACK(int) cdb, trail, phases, clause, mins;
-  int satcntbytes; union { U1 * satcnt1; U2 * satcnt2; U4 * satcnt4; };
-  int * occs, noccs; unsigned * weights;
-  int * pos, * lits; Lnk ** lnk;
-  int * crit; unsigned * weightedbreak;
-  int nclauses, nbin, ntrn, minlen, maxlen; double avglen;
-  STACK(unsigned) breaks; STACK(double) scores; STACK(int) cands;
-  STACK(Word*) cache; int cachesizetarget; STACK(Word) sigs;
-  STACK(int) minlits;
+  long long trivial, mt, uniform, pick;
+  Word * vals, * best, * tmp, * clear, * set; long long nvarwords;
+  STACK(long long) cdb, trail, phases, clause, mins;
+  long long satcntbytes; union { U1 * satcnt1; U2 * satcnt2; U4 * satcnt4; };
+  long long * occs, noccs; unsigned long long * weights;
+  long long * pos, * lits; Lnk ** lnk;
+  long long * crit; unsigned long long * weightedbreak;
+  long long nclauses, nbin, ntrn, minlen, maxlen; double avglen;
+  STACK(unsigned long long) breaks; STACK(double) scores; STACK(long long) cands;
+  STACK(Word*) cache; long long cachesizetarget; STACK(Word) sigs;
+  STACK(long long) minlits;
   Callbacks cbs;
   Limits limits;
   Strat strat;
@@ -559,7 +560,7 @@ static double yals_time (Yals * yals) {
 static void yals_flush_time (Yals * yals) {
   double time, entered;
 #ifdef __GNUC__
-  int old;
+  long long old;
   // begin{atomic}
   old = __sync_val_compare_and_swap (&yals->stats.flushing_time, 0, 42);
   assert (old == 0 || old == 42);
@@ -657,23 +658,23 @@ static void yals_rds (RDS * r) {
 /*------------------------------------------------------------------------*/
 
 void yals_srand (Yals * yals, unsigned long long seed) {
-  unsigned z = seed >> 32, w = seed;
+  unsigned long long z = seed >> 32, w = seed;
   if (!z) z = ~z;
   if (!w) w = ~w;
   yals->rng.z = z, yals->rng.w = w;
   yals_msg (yals, 2, "setting random seed %llu", seed);
 }
 
-static unsigned yals_rand (Yals * yals) {
-  unsigned res;
+static unsigned long long yals_rand (Yals * yals) {
+  unsigned long long res;
   yals->rng.z = 36969 * (yals->rng.z & 65535) + (yals->rng.z >> 16);
   yals->rng.w = 18000 * (yals->rng.w & 65535) + (yals->rng.w >> 16);
   res = (yals->rng.z << 16) + yals->rng.w;
   return res;
 }
 
-static unsigned yals_rand_mod (Yals * yals, unsigned mod) {
-  unsigned res;
+static unsigned long long yals_rand_mod (Yals * yals, unsigned long long mod) {
+  unsigned long long res;
   assert (mod >= 1);
   if (mod <= 1) return 0;
   res = yals_rand (yals);
@@ -683,43 +684,43 @@ static unsigned yals_rand_mod (Yals * yals, unsigned mod) {
 
 /*------------------------------------------------------------------------*/
 
-static int * yals_refs (Yals * yals, int lit) {
-  int idx = ABS (lit);
+static long long * yals_refs (Yals * yals, long long lit) {
+  long long idx = ABS (lit);
   assert_valid_idx (idx);
   assert (yals->refs);
   return yals->refs + 2*idx + (lit < 0);
 }
 
-static int * yals_occs (Yals * yals, int lit) {
-  int occs;
+static long long * yals_occs (Yals * yals, long long lit) {
+  long long occs;
   INC (occs);
   occs = *yals_refs (yals, lit);
   assert_valid_occs (occs);
   return yals->occs + occs;
 }
 
-static int yals_val (Yals * yals, int lit) {
-  int idx = ABS (lit), res = !GETBIT (yals->vals, yals->nvarwords, idx);
+static long long yals_val (Yals * yals, long long lit) {
+  long long idx = ABS (lit), res = !GETBIT (yals->vals, yals->nvarwords, idx);
   if (lit > 0) res = !res;
   return res;
 }
 
-static int yals_best (Yals * yals, int lit) {
-  int idx = ABS (lit), res = !GETBIT (yals->best, yals->nvarwords, idx);
+static long long yals_best (Yals * yals, long long lit) {
+  long long idx = ABS (lit), res = !GETBIT (yals->best, yals->nvarwords, idx);
   if (lit > 0) res = !res;
   return res;
 }
 
-static unsigned yals_weighted_break (Yals * yals, int lit) {
-  int idx = ABS (lit);
+static unsigned long long yals_weighted_break (Yals * yals, long long lit) {
+  long long idx = ABS (lit);
   assert (yals->crit);
   assert_valid_idx (idx);
   return yals->weightedbreak[2*idx + (lit < 0)];
 }
 
-static void yals_inc_weighted_break (Yals * yals, int lit, int len) {
-  int idx = ABS (lit), pos;
-  unsigned w;
+static void yals_inc_weighted_break (Yals * yals, long long lit, long long len) {
+  long long idx = ABS (lit), pos;
+  unsigned long long w;
   assert (yals->crit);
   assert_valid_idx (idx);
   assert_valid_len (len);
@@ -730,9 +731,9 @@ static void yals_inc_weighted_break (Yals * yals, int lit, int len) {
   INC (weight);
 }
 
-static void yals_dec_weighted_break (Yals * yals, int lit, int len) {
-  int idx = ABS (lit), pos;
-  unsigned w;
+static void yals_dec_weighted_break (Yals * yals, long long lit, long long len) {
+  long long idx = ABS (lit), pos;
+  unsigned long long w;
   assert (yals->crit);
   assert_valid_idx (idx);
   assert_valid_len (len);
@@ -743,14 +744,14 @@ static void yals_dec_weighted_break (Yals * yals, int lit, int len) {
   INC (weight);
 }
 
-static unsigned yals_satcnt (Yals * yals, int cidx) {
+static unsigned long long yals_satcnt (Yals * yals, long long cidx) {
   assert_valid_cidx (cidx);
   if (yals->satcntbytes == 1) return yals->satcnt1[cidx];
   if (yals->satcntbytes == 2) return yals->satcnt2[cidx];
   return yals->satcnt4[cidx];
 }
 
-static void yals_setsatcnt (Yals * yals, int cidx, unsigned satcnt) {
+static void yals_setsatcnt (Yals * yals, long long cidx, unsigned long long satcnt) {
   assert_valid_cidx (cidx);
   if (yals->satcntbytes == 1) {
     assert (satcnt < 256);
@@ -763,8 +764,8 @@ static void yals_setsatcnt (Yals * yals, int cidx, unsigned satcnt) {
   }
 }
 
-static unsigned yals_incsatcnt (Yals * yals, int cidx, int lit, int len) {
-  unsigned res;
+static unsigned long long yals_incsatcnt (Yals * yals, long long cidx, long long lit, long long len) {
+  unsigned long long res;
   assert_valid_cidx (cidx);
   assert_valid_len (len);
   if (yals->satcntbytes == 1) {
@@ -790,8 +791,8 @@ static unsigned yals_incsatcnt (Yals * yals, int cidx, int lit, int len) {
   return res;
 }
 
-static unsigned yals_decsatcnt (Yals * yals, int cidx, int lit, int len) {
-  unsigned res;
+static unsigned long long yals_decsatcnt (Yals * yals, long long cidx, long long lit, long long len) {
+  unsigned long long res;
   assert_valid_cidx (cidx);
   assert_valid_len (len);
   if (yals->satcntbytes == 1) {
@@ -809,7 +810,7 @@ static unsigned yals_decsatcnt (Yals * yals, int cidx, int lit, int len) {
   yals->stats.dec[res + 1]++;
 #endif
   if (yals->crit) {
-    int other = yals->crit[cidx] ^ lit;
+    long long other = yals->crit[cidx] ^ lit;
     yals->crit[cidx] = other;
     if (res == 1) yals_inc_weighted_break (yals, other, len);
     else if (!res) yals_dec_weighted_break (yals, lit, len);
@@ -818,7 +819,7 @@ static unsigned yals_decsatcnt (Yals * yals, int cidx, int lit, int len) {
   return res;
 }
 
-static int * yals_lits (Yals * yals, int cidx) {
+static long long * yals_lits (Yals * yals, long long cidx) {
   INC (lits);
   assert_valid_cidx (cidx);
   return yals->cdb.start + yals->lits[cidx];
@@ -838,19 +839,19 @@ static void yals_report (Yals * yals, const char * fmt, ...) {
   vfprintf (yals->out, fmt, ap);
   va_end (ap);
   fprintf (yals->out,
-    " : best %d (tmp %d), kflips %.0f, %.2f sec, %.2f kflips/sec\n",
+    " : best %lld (tmp %lld), kflips %.0f, %.2f sec, %.2f kflips/sec\n",
     yals->stats.best, yals->stats.tmp, f/1e3, t, yals_avg (f/1e3, t));
   fflush (yals->out);
   yals_msgunlock (yals);
 }
 
-static int yals_nunsat (Yals * yals) {
+static long long yals_nunsat (Yals * yals) {
   if (yals->unsat.usequeue) return yals->unsat.queue.count;
   else return COUNT (yals->unsat.stack);
 }
 
 static void yals_save_new_minimum (Yals * yals) {
-  int nunsat = yals_nunsat (yals);
+  long long nunsat = yals_nunsat (yals);
   size_t bytes = yals->nvarwords * sizeof (Word);
   if (yals->stats.worst < nunsat) yals->stats.worst = nunsat;
   if (yals->stats.tmp > nunsat) {
@@ -879,12 +880,12 @@ static void yals_save_new_minimum (Yals * yals) {
 
 static void yals_check_global_invariant (Yals * yals) {
 #ifndef NDEBUG
-  int cidx, lit, nunsat = 0;
-  const int * p;
+  long long cidx, lit, nunsat = 0;
+  const long long * p;
   assert (BITS_PER_WORD == (1 << LD_BITS_PER_WORD));
   if (!yals->opts.checking.val) return;
   for (cidx = 0; cidx < yals->nclauses; cidx++) {
-    unsigned sat;
+    unsigned long long sat;
     for (p = yals_lits (yals, cidx), sat = 0; (lit = *p); p++)
       if (yals_val (yals, lit)) sat++;
     assert (yals_satcnt (yals, cidx) == sat);
@@ -894,7 +895,7 @@ static void yals_check_global_invariant (Yals * yals) {
       assert (l);
       assert (l->cidx == cidx);
     } else {
-      int pos = yals->pos[cidx];
+      long long pos = yals->pos[cidx];
       if (sat) assert (pos < 0);
       else {
 	assert_valid_pos (pos);
@@ -961,8 +962,8 @@ static const char * yals_pick_to_str (Yals * yals) {
   }
 }
 
-static int yals_pick_clause (Yals * yals) {
-  int cidx, nunsat = yals_nunsat (yals);
+static long long yals_pick_clause (Yals * yals) {
+  long long cidx, nunsat = yals_nunsat (yals);
   assert (nunsat > 0);
   if (yals->unsat.usequeue) {
     Lnk * lnk;
@@ -988,7 +989,7 @@ static int yals_pick_clause (Yals * yals) {
     assert (lnk);
     cidx = lnk->cidx;
   } else {
-    int cpos;
+    long long cpos;
     if (yals->pick == PSEUDO_BFS_CLAUSE_PICKING) {
       cpos = yals->stats.flips % nunsat;
     } else {
@@ -1007,21 +1008,21 @@ static int yals_pick_clause (Yals * yals) {
 
 /*------------------------------------------------------------------------*/
 
-static unsigned yals_dynamic_weighted_break (Yals * yals, int lit) {
-  unsigned res = yals_weighted_break (yals, -lit);
+static unsigned long long yals_dynamic_weighted_break (Yals * yals, long long lit) {
+  unsigned long long res = yals_weighted_break (yals, -lit);
   LOG ("literal %d results in weighted break %u", lit, res);
   return res;
 }
 
 #define ACCU(SUM,INC) \
 do { \
-  if (UINT_MAX - (INC) < (SUM)) (SUM) = UINT_MAX; else (SUM) += (INC); \
+  if (ULLONG_MAX - (INC) < (SUM)) (SUM) = ULLONG_MAX; else (SUM) += (INC); \
 } while (0)
 
-static unsigned yals_compute_weighted_break (Yals * yals, int lit) {
-  unsigned wb, b, w, cnt;
-  const int * p, * occs;
-  int occ, cidx, len;
+static unsigned long long yals_compute_weighted_break (Yals * yals, long long lit) {
+  unsigned long long wb, b, w, cnt;
+  const long long * p, * occs;
+  long long occ, cidx, len;
 
   assert (!yals_val (yals, lit));
   wb = b = 0;
@@ -1038,15 +1039,15 @@ static unsigned yals_compute_weighted_break (Yals * yals, int lit) {
   }
 
   LOG ("literal %d breaks %u clauses out of %d results in weighted break %u",
-    lit, b, (int)(p - occs), wb);
+    lit, b, (long long)(p - occs), wb);
 
   ADD (read, p - occs);
 
   return wb;
 }
 
-static unsigned yals_determine_weighted_break (Yals * yals, int lit) {
-  unsigned res;
+static unsigned long long yals_determine_weighted_break (Yals * yals, long long lit) {
+  unsigned long long res;
   if (yals->crit) res = yals_dynamic_weighted_break (yals, lit);
   else res = yals_compute_weighted_break (yals, lit);
 #ifndef NYALSTATS
@@ -1059,7 +1060,7 @@ static unsigned yals_determine_weighted_break (Yals * yals, int lit) {
 /*------------------------------------------------------------------------*/
 
 static double
-yals_compute_score_from_weighted_break (Yals * yals, unsigned w) {
+yals_compute_score_from_weighted_break (Yals * yals, unsigned long long w) {
 
   double s;
 
@@ -1077,11 +1078,11 @@ yals_compute_score_from_weighted_break (Yals * yals, unsigned w) {
   return s;
 }
 
-static int yals_pick_by_score (Yals * yals) {
+static long long yals_pick_by_score (Yals * yals) {
   double s, lim, sum;
   const double * q;
-  const int * p;
-  int res;
+  const long long * p;
+  long long res;
 
   assert (!EMPTY (yals->scores));
   assert (COUNT (yals->scores) == COUNT (yals->cands));
@@ -1113,11 +1114,11 @@ static int yals_pick_by_score (Yals * yals) {
 
 /*------------------------------------------------------------------------*/
 
-static int yals_pick_literal (Yals * yals, int cidx) {
-  const int pick_break_zero = yals->opts.breakzero.val;
-  const int * p, * lits;
-  int lit, zero;
-  unsigned w;
+static long long yals_pick_literal (Yals * yals, long long cidx) {
+  const long long pick_break_zero = yals->opts.breakzero.val;
+  const long long * p, * lits;
+  long long lit, zero;
+  unsigned long long w;
   double s;
 
   assert (EMPTY (yals->breaks));
@@ -1147,9 +1148,9 @@ static int yals_pick_literal (Yals * yals, int cidx) {
 
   } else {
 
-    const unsigned * wbs = yals->breaks.start;
-    const unsigned n = COUNT (yals->breaks);
-    unsigned i;
+    const unsigned long long * wbs = yals->breaks.start;
+    const unsigned long long n = COUNT (yals->breaks);
+    unsigned long long i;
 
     assert (EMPTY (yals->scores));
 
@@ -1163,7 +1164,7 @@ static int yals_pick_literal (Yals * yals, int cidx) {
 
 #ifndef NDEBUG
     for (i = 0; i < n; i++) {
-      int tmp = lits[i];
+      long long tmp = lits[i];
       if (tmp != lit) continue;
       s = yals->scores.start[i];
       w = wbs[i];
@@ -1183,8 +1184,8 @@ static int yals_pick_literal (Yals * yals, int cidx) {
 
 /*------------------------------------------------------------------------*/
 
-static void yals_flip_value_of_lit (Yals * yals, int lit) {
-  int idx = ABS (lit);
+static void yals_flip_value_of_lit (Yals * yals, long long lit) {
+  long long idx = ABS (lit);
   LOG ("flipping %d", lit);
   NOTBIT (yals->vals, yals->nvarwords, idx);
   yals->flips[idx]++;
@@ -1193,11 +1194,11 @@ static void yals_flip_value_of_lit (Yals * yals, int lit) {
 /*------------------------------------------------------------------------*/
 
 static void yals_flush_queue (Yals * yals) {
-  int count = 0;
+  long long count = 0;
   Lnk * p;
   assert (yals->unsat.usequeue);
   for (p = yals->unsat.queue.first; p; p = p->next) {
-    int cidx = p->cidx;
+    long long cidx = p->cidx;
     assert_valid_cidx (cidx);
     assert (yals->lnk[cidx] == p);
     yals->lnk[cidx] = 0;
@@ -1210,7 +1211,7 @@ static void yals_flush_queue (Yals * yals) {
 }
 
 static void yals_release_lnks (Yals * yals) {
-  int chunks = 0, lnks = 0;
+  long long chunks = 0, lnks = 0;
   Chunk * q, * n;
   assert (yals->unsat.usequeue);
   for (q = yals->unsat.queue.chunks; q; q = n) {
@@ -1236,8 +1237,8 @@ static void yals_reset_unsat_queue (Yals * yals) {
 }
 
 static void yals_defrag_queue (Yals * yals) {
-  const int count = yals->unsat.queue.count;
-  const int size = MAX(2*(count + 1), yals->opts.minchunksize.val);
+  const long long count = yals->unsat.queue.count;
+  const long long size = MAX(2*(count + 1), yals->opts.minchunksize.val);
   Lnk * p, * first, * free, * prev = 0;
   double start = yals_time (yals);
   const Lnk * q;
@@ -1265,7 +1266,7 @@ static void yals_defrag_queue (Yals * yals) {
   yals->unsat.queue.last = prev;
   yals->unsat.queue.count = count;
   for (p = yals->unsat.queue.first; p; p = p->next) {
-    int cidx = p->cidx;
+    long long cidx = p->cidx;
     assert_valid_cidx (cidx);
     assert (!yals->lnk[cidx]);
     yals->lnk[cidx] = p;
@@ -1287,7 +1288,7 @@ static void yals_defrag_queue (Yals * yals) {
 }
 
 
-static int yals_need_to_defrag_queue (Yals * yals) {
+static long long yals_need_to_defrag_queue (Yals * yals) {
   if (!yals->opts.defrag.val) return 0;
   if (!yals->unsat.queue.count) return 0;
   if (yals->unsat.queue.nlnks <= yals->opts.minchunksize.val) return 0;
@@ -1295,7 +1296,7 @@ static int yals_need_to_defrag_queue (Yals * yals) {
   return 1;
 }
 
-static void yals_dequeue_queue (Yals * yals, int cidx) {
+static void yals_dequeue_queue (Yals * yals, long long cidx) {
   Lnk * l;
   assert (yals->unsat.usequeue);
   assert (yals->unsat.queue.count > 0);
@@ -1313,8 +1314,8 @@ static void yals_dequeue_queue (Yals * yals, int cidx) {
   if (yals_need_to_defrag_queue (yals)) yals_defrag_queue (yals);
 }
 
-static void yals_dequeue_stack (Yals * yals, int cidx) {
-  int cpos = yals->pos[cidx], didx;
+static void yals_dequeue_stack (Yals * yals, long long cidx) {
+  long long cpos = yals->pos[cidx], didx;
   assert (!yals->unsat.usequeue);
   assert_valid_pos (cpos);
   assert (PEEK (yals->unsat.stack, cpos) == cidx);
@@ -1328,7 +1329,7 @@ static void yals_dequeue_stack (Yals * yals, int cidx) {
   yals->pos[cidx] = -1;
 }
 
-static void yals_dequeue (Yals * yals, int cidx) {
+static void yals_dequeue (Yals * yals, long long cidx) {
   LOG ("dequeue %d", cidx);
   assert_valid_cidx (cidx);
   if (yals->unsat.usequeue) yals_dequeue_queue (yals, cidx);
@@ -1338,7 +1339,7 @@ static void yals_dequeue (Yals * yals, int cidx) {
 static void yals_new_chunk (Yals * yals) {
   Lnk * p, * first, * prev = 0;
   Chunk * c;
-  int size;
+  long long size;
   size = yals->unsat.queue.chunksize;
   assert (size >= yals->opts.minchunksize.val);
   LOG ("new chunk of size %d", size);
@@ -1377,7 +1378,7 @@ static Lnk * yals_new_lnk (Yals * yals) {
   return res;
 }
 
-static void yals_enqueue_queue (Yals * yals, int cidx) {
+static void yals_enqueue_queue (Yals * yals, long long cidx) {
   Lnk * res;
   assert (yals->unsat.usequeue);
   res = yals_new_lnk (yals);
@@ -1391,8 +1392,8 @@ static void yals_enqueue_queue (Yals * yals, int cidx) {
           yals->unsat.queue.nfree + yals->unsat.queue.count);
 }
 
-static void yals_enqueue_stack (Yals * yals, int cidx) {
-  int size;
+static void yals_enqueue_stack (Yals * yals, long long cidx) {
+  long long size;
   assert (!yals->unsat.usequeue);
   assert (yals->pos[cidx] < 0);
   yals->pos[cidx] = COUNT (yals->unsat.stack);
@@ -1401,7 +1402,7 @@ static void yals_enqueue_stack (Yals * yals, int cidx) {
     yals->stats.maxstacksize = size;
 }
 
-static void yals_enqueue (Yals * yals, int cidx) {
+static void yals_enqueue (Yals * yals, long long cidx) {
   LOG ("enqueue %d", cidx);
   assert_valid_cidx (cidx);
   if (yals->unsat.usequeue) yals_enqueue_queue (yals, cidx);
@@ -1411,7 +1412,7 @@ static void yals_enqueue (Yals * yals, int cidx) {
 static void yals_reset_unsat_stack (Yals * yals) {
   assert (!yals->unsat.usequeue);
   while (!EMPTY (yals->unsat.stack)) {
-    int cidx = POP (yals->unsat.stack);
+    long long cidx = POP (yals->unsat.stack);
     assert_valid_cidx (cidx);
     assert (yals->pos[cidx] == COUNT (yals->unsat.stack));
     yals->pos[cidx] = -1;
@@ -1426,11 +1427,11 @@ static void yals_reset_unsat (Yals * yals) {
 
 /*------------------------------------------------------------------------*/
 
-static void yals_make_clauses_after_flipping_lit (Yals * yals, int lit) {
-  const int * p, * occs;
-  int cidx, len, occ;
+static void yals_make_clauses_after_flipping_lit (Yals * yals, long long lit) {
+  const long long * p, * occs;
+  long long cidx, len, occ;
 #if !defined(NDEBUG) || !defined(NYALSTATS)
-  int made = 0;
+  long long made = 0;
 #endif
   assert (yals_val (yals, lit));
   occs = yals_occs (yals, lit);
@@ -1447,7 +1448,7 @@ static void yals_make_clauses_after_flipping_lit (Yals * yals, int lit) {
   LOG ("flipping %d has made %d clauses", lit, made);
 #ifndef NYALSMEMS
   {
-    int updated = p - occs;
+    long long updated = p - occs;
     ADD (update, updated);
     if (yals->crit) ADD (crit, updated);
   }
@@ -1457,11 +1458,11 @@ static void yals_make_clauses_after_flipping_lit (Yals * yals, int lit) {
 #endif
 }
 
-static void yals_break_clauses_after_flipping_lit (Yals * yals, int lit) {
-  const int * p, * occs;
-  int occ, cidx, len;
+static void yals_break_clauses_after_flipping_lit (Yals * yals, long long lit) {
+  const long long * p, * occs;
+  long long occ, cidx, len;
 #if !defined(NDEBUG) || !defined(NYALSTATS)
-  int broken = 0;
+  long long broken = 0;
 #endif
   occs = yals_occs (yals, -lit);
   for (p = occs; (occ = *p) >= 0; p++) {
@@ -1477,7 +1478,7 @@ static void yals_break_clauses_after_flipping_lit (Yals * yals, int lit) {
   LOG ("flipping %d has broken %d clauses", lit, broken);
 #ifndef NYALSMEMS
   {
-    int updated = p - occs;
+    long long updated = p - occs;
     ADD (update, updated);
     if (yals->crit) ADD (crit, updated);
   }
@@ -1494,8 +1495,8 @@ static void yals_update_minimum (Yals * yals) {
 }
 
 static void yals_flip (Yals * yals) {
-  int cidx = yals_pick_clause (yals);
-  int lit = yals_pick_literal (yals, cidx);
+  long long cidx = yals_pick_clause (yals);
+  long long lit = yals_pick_literal (yals, cidx);
   yals->stats.flips++;
   yals->stats.unsum += yals_nunsat (yals);
   yals_flip_value_of_lit (yals, lit);
@@ -1507,9 +1508,9 @@ static void yals_flip (Yals * yals) {
 /*------------------------------------------------------------------------*/
 
 static void yals_preprocess (Yals * yals) {
-  int nvars = yals->nvars, lit, other, next, occ, w0, w1;
-  int * p, * c, * q, oldnlits, newnlits, satisfied, nsat, nstr;
-  STACK(int) * watches, * s;
+  long long nvars = yals->nvars, lit, other, next, occ, w0, w1;
+  long long * p, * c, * q, oldnlits, newnlits, satisfied, nsat, nstr;
+  STACK(long long) * watches, * s;
   signed char * vals;
 
   FIT (yals->cdb);
@@ -1634,7 +1635,7 @@ static Word yals_primes[] = {
 #define NPRIMES (sizeof(yals_primes)/sizeof(unsigned))
 
 static Word yals_sig (Yals * yals) {
-  unsigned i = 0, j;
+  unsigned long long i = 0, j;
   Word res = 0;
   for (j = 0; j < yals->nvarwords; j++) {
     res += yals_primes[i++] * yals->vals[j];
@@ -1643,21 +1644,21 @@ static Word yals_sig (Yals * yals) {
   return res;
 }
 
-static unsigned yals_gcd (unsigned a, unsigned b) {
+static unsigned long long yals_gcd (unsigned long long a, unsigned long long b) {
   while (b) {
-    unsigned r = a % b;
+    unsigned long long r = a % b;
     a = b, b = r;
   }
   return a;
 }
 
 static void yals_cache_assignment (Yals * yals) {
-  int min, other_min, cachemax, cachemin, cachemincount, cachemaxcount;
-  unsigned start, delta, i, j, ncache, rpos;
+  long long min, other_min, cachemax, cachemin, cachemincount, cachemaxcount;
+  unsigned long long start, delta, i, j, ncache, rpos;
   Word sig, other_sig, * other_vals;
   size_t bytes;
 #ifndef NDEBUG
-  int count;
+  long long count;
 #endif
 
   if (!yals->opts.cachemin.val) return;
@@ -1679,7 +1680,7 @@ static void yals_cache_assignment (Yals * yals) {
     yals->stats.sig.falsepos++;
   }
 
-  cachemin = INT_MAX, cachemax = -1;
+  cachemin = LLONG_MAX, cachemax = -1;
   cachemaxcount = cachemincount = 0;
   for (j = 0; j < ncache; j++) {
     other_min = PEEK (yals->mins, j);
@@ -1781,7 +1782,7 @@ DO_NOT_CACHE_ASSSIGNEMNT:
 }
 
 static void yals_remove_trailing_bits (Yals * yals) {
-  unsigned i;
+  unsigned long long i;
   Word mask;
   if (!yals->nvarwords) return;
   i = yals->nvars & BITMAPMASK;
@@ -1806,9 +1807,9 @@ static void yals_set_units (Yals * yals) {
 }
 
 static void yals_setphases (Yals * yals) {
-  int i, idx, lit;
+  long long i, idx, lit;
   yals_msg (yals, 1,
-    "forcing %d initial phases", (int) COUNT (yals->phases));
+    "forcing %d initial phases", (long long) COUNT (yals->phases));
   for (i = 0; i < COUNT (yals->phases); i++) {
     lit = PEEK (yals->phases, i);
     assert (lit);
@@ -1824,10 +1825,10 @@ static void yals_setphases (Yals * yals) {
   RELEASE (yals->phases);
 }
 
-static void yals_pick_assignment (Yals * yals, int initial) {
-  int idx, pos, neg, i, nvars = yals->nvars, ncache;
+static void yals_pick_assignment (Yals * yals, long long initial) {
+  long long idx, pos, neg, i, nvars = yals->nvars, ncache;
   size_t bytes = yals->nvarwords * sizeof (Word);
-  const int vl = 1 + !initial;
+  const long long vl = 1 + !initial;
   if (!initial && yals->opts.best.val) {
     yals->stats.pick.best++;
     yals_msg (yals, vl, "picking previous best assignment");
@@ -1842,7 +1843,7 @@ static void yals_pick_assignment (Yals * yals, int initial) {
       assert (EMPTY (yals->cands));
       assert (EMPTY (yals->scores));
       for (i = 0; i < ncache; i++) {
-	int min = PEEK (yals->mins, i);
+	long long min = PEEK (yals->mins, i);
 	assert (min >= 0);
 	PUSH (yals->cands, i);
 	PUSH (yals->scores, min);
@@ -1884,19 +1885,19 @@ static void yals_pick_assignment (Yals * yals, int initial) {
 
 static void yals_log_assignment (Yals * yals) {
 #ifndef NDEBUG
-  int idx;
+  long long idx;
   if (!yals->opts.logging.val) return;
   for (idx = 1; idx < yals->nvars; idx++) {
-    int lit = yals_val (yals, idx) ? idx : -idx;
+    long long lit = yals_val (yals, idx) ? idx : -idx;
     LOG ("assigned %d", lit);
   }
 #endif
 }
 
-static unsigned yals_len_to_weight (Yals * yals, int len) {
-  const int uni = yals->strat.uni;
-  const int weight = yals->strat.weight;
-  unsigned w;
+static unsigned long long yals_len_to_weight (Yals * yals, long long len) {
+  const long long uni = yals->strat.uni;
+  const long long weight = yals->strat.weight;
+  unsigned long long w;
 
   if (uni > 0) w = weight;
   else if (uni < 0) w = MIN (len, weight);
@@ -1906,15 +1907,15 @@ static unsigned yals_len_to_weight (Yals * yals, int len) {
 }
 
 static void yals_update_sat_and_unsat (Yals * yals) {
-  int lit, cidx, len, cappedlen, crit;
-  const int * lits, * p;
-  unsigned satcnt;
+  long long lit, cidx, len, cappedlen, crit;
+  const long long * lits, * p;
+  unsigned long long satcnt;
   yals_log_assignment (yals);
   yals_reset_unsat (yals);
   for (len = 1; len <= MAXLEN; len++)
     yals->weights[len] = yals_len_to_weight (yals, len);
   if (yals->crit)
-    memset (yals->weightedbreak, 0, 2*yals->nvars*sizeof(int));
+    memset (yals->weightedbreak, 0, 2*yals->nvars*sizeof(long long));
   for (cidx = 0; cidx < yals->nclauses; cidx++) {
     satcnt = 0;
     lits = yals_lits (yals, cidx);
@@ -1943,8 +1944,8 @@ static void yals_update_sat_and_unsat (Yals * yals) {
 static void yals_init_weight_to_score_table (Yals * yals) {
   double cb, invcb, score, eps;
   const double start = 1e150;
-  int maxlen = yals->maxlen;
-  unsigned i;
+  long long maxlen = yals->maxlen;
+  unsigned long long i;
 
   // probSAT SC'13 values:
 
@@ -1994,11 +1995,11 @@ static void yals_init_weight_to_score_table (Yals * yals) {
 /*------------------------------------------------------------------------*/
 
 static void yals_connect (Yals * yals) {
-  int idx, n, lit, nvars = yals->nvars, * count, cidx, sign;
-  long long sumoccs, sumlen; int minoccs, maxoccs, minlen, maxlen;
-  int * occsptr, occs, len, lits, maxidx, nused, uniform;
-  int nclauses, nbin, ntrn, nquad, nlarge;
-  const int * p,  * q;
+  long long idx, n, lit, nvars = yals->nvars, * count, cidx, sign;
+  long long sumoccs, sumlen; long long minoccs, maxoccs, minlen, maxlen;
+  long long * occsptr, occs, len, lits, maxidx, nused, uniform;
+  long long nclauses, nbin, ntrn, nquad, nlarge;
+  const long long * p,  * q;
 
   FIT (yals->cdb);
   RELEASE (yals->mark);
@@ -2032,8 +2033,8 @@ static void yals_connect (Yals * yals) {
 
   yals_msg (yals, 1,
     "size of literal stack %d (%d for large clauses only)",
-    (int) COUNT (yals->cdb),
-    ((int) COUNT (yals->cdb)) - 3*nbin - 4*ntrn);
+    (long long) COUNT (yals->cdb),
+    ((long long) COUNT (yals->cdb)) - 3*nbin - 4*ntrn);
 
   yals->maxlen = maxlen;
   yals->minlen = minlen;
@@ -2082,7 +2083,7 @@ static void yals_connect (Yals * yals) {
   occs = 0;
   nused = 0;
   for (lit = 1; lit < nvars; lit++) {
-    int pos = count[lit], neg = count[-lit], sum = pos + neg;
+    long long pos = count[lit], neg = count[-lit], sum = pos + neg;
     occs += sum + 2;
     if (sum) nused++;
   }
@@ -2154,7 +2155,7 @@ static void yals_connect (Yals * yals) {
   for (idx = 1; idx < nvars; idx++)
     for (sign = 1; sign >= -1; sign -= 2) {
       lit = sign * idx;
-      int occs = count[lit] + count[-lit];
+      long long occs = count[lit] + count[-lit];
       if (!occs) continue;
       sumoccs += occs;
       if (occs > maxoccs) maxoccs = occs;
@@ -2266,7 +2267,7 @@ static void yals_connect (Yals * yals) {
 
 #define SETOPT(NAME,DEFAULT,MIN,MAX,DESCRIPTION) \
 do { \
-  int OLD; \
+  long long OLD; \
   if (strcmp (name, #NAME)) break; \
   if(val < (MIN)) { \
     yals_warn (yals, \
@@ -2293,7 +2294,7 @@ do { \
 #undef OPT
 #define OPT SETOPT
 
-int yals_setopt (Yals * yals, const char * name, int val) {
+long long yals_setopt (Yals * yals, const char * name, long long val) {
   OPTSTEMPLATE
   return 0;
 }
@@ -2308,7 +2309,7 @@ do { \
 #undef OPT
 #define OPT GETOPT
 
-int yals_getopt (Yals * yals, const char * name) {
+long long yals_getopt (Yals * yals, const char * name) {
   OPTSTEMPLATE
   return 0;
 }
@@ -2317,11 +2318,11 @@ int yals_getopt (Yals * yals, const char * name) {
 
 #define USGOPT(NAME,DEFAULT,MIN,MAX,DESCRIPTION) \
 do { \
-  char BUFFER[120]; int I; \
+  char BUFFER[120]; long long I; \
   sprintf (BUFFER, "--%s=%d..%d", #NAME, (MIN), (MAX)); \
   fputs (BUFFER, yals->out); \
   for (I = 28 - strlen (BUFFER); I > 0; I--) fputc (' ', yals->out); \
-  fprintf (yals->out, "%s [%d]\n", (DESCRIPTION), (int)(DEFAULT)); \
+  fprintf (yals->out, "%s [%lld]\n", (DESCRIPTION), (long long)(DEFAULT)); \
 } while (0)
 
 #undef OPT
@@ -2348,7 +2349,7 @@ void yals_showopts (Yals * yals) { OPTSTEMPLATE }
 /*------------------------------------------------------------------------*/
 
 static void yals_envopt (Yals * yals, const char * name, Opt * opt) {
-  int len = strlen (name) + strlen ("YALS") + 1, val, ch;
+  long long len = strlen (name) + strlen ("YALS") + 1, val, ch;
   char * env = yals_malloc (yals, len), * p;
   const char * str;
   sprintf (env, "yals%s",name);
@@ -2430,15 +2431,15 @@ Yals * yals_new_with_mem_mgr (void * mgr,
 #endif
 #if 0
   if (getenv ("YALSAMPLES") && getenv ("YALSMOD")) {
-    int s = atoi (getenv ("YALSAMPLES")), i;
-    int m = atoi (getenv ("YALSMOD"));
+    long long s = atoi (getenv ("YALSAMPLES")), i;
+    long long m = atoi (getenv ("YALSMOD"));
     double start = yals_time (yals), delta;
     int64_t * count;
     if (m <= 0) m = 1;
     yals_msg (yals, 0, "starting to sample %d times RNG mod %d", s, m);
     NEWN (count, m);
     for (i = 0; i < s; i++) {
-      int r = yals_rand_mod (yals, m);
+      long long r = yals_rand_mod (yals, m);
       assert (0 <= r), assert (r < m);
       count[r]++;
     }
@@ -2463,7 +2464,7 @@ Yals * yals_new () {
 }
 
 static void yals_reset_cache (Yals * yals) {
-  int ncache = COUNT (yals->cache);
+  long long ncache = COUNT (yals->cache);
   Word ** w;
   for (w = yals->cache.start; w < yals->cache.top; w++)
     DELN (*w, yals->nvarwords);
@@ -2524,7 +2525,7 @@ void yals_setout (Yals * yals, FILE * out) {
   yals->out = out;
 }
 
-void yals_setphase (Yals * yals, int lit) {
+void yals_setphase (Yals * yals, long long lit) {
   if (!lit) yals_abort (yals, "zero literal argument to 'yals_val'");
   PUSH (yals->phases, lit);
 }
@@ -2552,7 +2553,7 @@ void yals_setime (Yals * yals, double (*time)(void)) {
   yals->cbs.time = time;
 }
 
-void yals_seterm (Yals * yals, int (*term)(void *), void * state) {
+void yals_seterm (Yals * yals, long long (*term)(void *), void * state) {
   yals->cbs.term.state = state;
   yals->cbs.term.fun = term;
 }
@@ -2569,7 +2570,7 @@ void yals_setmsglock (Yals * yals,
 /*------------------------------------------------------------------------*/
 
 static void yals_new_clause (Yals * yals) {
-  int len = COUNT (yals->clause), * p, lit;
+  long long len = COUNT (yals->clause), * p, lit;
   if (!len) {
     LOG ("found empty clause in original formula");
     yals->mt = 1;
@@ -2587,12 +2588,12 @@ static void yals_new_clause (Yals * yals) {
   LOGLITS (yals->cdb.top - len - 1, "new length %d", len);
 }
 
-static signed char yals_sign (int lit) { return (lit < 0) ? -1 : 1; }
+static signed char yals_sign (long long lit) { return (lit < 0) ? -1 : 1; }
 
-void yals_add (Yals * yals, int lit) {
+void yals_add (Yals * yals, long long lit) {
   if (lit) {
     signed char mark;
-    int idx;
+    long long idx;
     if (lit == INT_MIN)
       yals_abort (yals, "can not add 'INT_MIN' as literal");
     idx = ABS (lit);
@@ -2608,7 +2609,7 @@ void yals_add (Yals * yals, int lit) {
       POKE (yals->mark, idx, yals_sign (lit));
     }
   } else {
-    const int * p;
+    const long long * p;
     for (p = yals->clause.start; p < yals->clause.top; p++)
       POKE (yals->mark, ABS (*p), 0);
     if (yals->trivial) yals->trivial = 0;
@@ -2630,7 +2631,7 @@ do { \
 #undef STRAT
 #define STRAT ISDEFSTRAT
 
-static int yals_is_default_strategy (Yals * yals) {
+static long long yals_is_default_strategy (Yals * yals) {
   STRATSTEMPLATE
   return 1;
 }
@@ -2638,12 +2639,12 @@ static int yals_is_default_strategy (Yals * yals) {
 #define PRINTSTRAT(NAME,ENABLED) \
 do { \
   if (!(ENABLED)) break; \
-  fprintf (yals->out, " --%s=%d", #NAME, yals->strat.NAME); \
+  fprintf (yals->out, " --%s=%lld", #NAME, yals->strat.NAME); \
 } while (0)
 #undef STRAT
 #define STRAT PRINTSTRAT
 
-static void yals_print_strategy (Yals * yals, const char * type, int vl) {
+static void yals_print_strategy (Yals * yals, const char * type, long long vl) {
   if (yals->opts.verbose.val < vl) return;
   yals_msglock (yals);
   fprintf (yals->out, "%s%s", yals->opts.prefix, type);
@@ -2670,19 +2671,19 @@ static void yals_set_default_strategy (Yals * yals) {
 
 /*------------------------------------------------------------------------*/
 
-static int yals_rand_opt (Yals * yals, Opt * opt, const char * name) {
-  unsigned mod, r;
-  int res;
+static long long yals_rand_opt (Yals * yals, Opt * opt, const char * name) {
+  unsigned long long mod, r;
+  long long res;
   mod = opt->max;
   mod -= opt->min;
   mod++;
   if (mod) {
     r = yals_rand_mod (yals, mod);
-    res = (int)(r + (unsigned) opt->min);
+    res = (long long)(r + (unsigned) opt->min);
   } else {
     assert (opt->min == INT_MIN);
     assert (opt->max == INT_MAX);
-    res = (int) yals_rand (yals);
+    res = (long long) yals_rand (yals);
   }
   assert (opt->min <= res), assert (res <= opt->max);
   (void) name;
@@ -2732,8 +2733,8 @@ static void yals_fix_strategy (Yals * yals) {
 
 /*------------------------------------------------------------------------*/
 
-static int yals_inner_restart_interval (Yals * yals) {
-  int res = yals->opts.restart.val;
+static long long yals_inner_restart_interval (Yals * yals) {
+  long long res = yals->opts.restart.val;
   if (res < yals->nvars/2) res = yals->nvars/2;
   return res;
 }
@@ -2745,9 +2746,9 @@ static int64_t yals_outer_restart_interval (Yals * yals) {
   return res;
 }
 
-static int yals_inc_inner_restart_interval (Yals * yals) {
+static long long yals_inc_inner_restart_interval (Yals * yals) {
   int64_t interval;
-  int res;
+  long long res;
 
   if (yals->opts.restart.val > 0) {
     if (yals->opts.reluctant.val) {
@@ -2788,14 +2789,14 @@ static int yals_inc_inner_restart_interval (Yals * yals) {
   return res;
 }
 
-static int yals_need_to_restart_inner (Yals * yals) {
+static long long yals_need_to_restart_inner (Yals * yals) {
   if (yals->uniform && 
       yals->stats.restart.inner.count >= yals->opts.unirestarts.val)
     return 0;
   return yals->stats.flips >= yals->limits.restart.inner.lim;
 }
 
-static int yals_need_to_restart_outer (Yals * yals) {
+static long long yals_need_to_restart_outer (Yals * yals) {
   return yals->stats.flips >= yals->limits.restart.outer.lim;
 }
 
@@ -2826,7 +2827,7 @@ static void yals_restart_inner (Yals * yals) {
 
 /*------------------------------------------------------------------------*/
 
-static int yals_done (Yals * yals) {
+static long long yals_done (Yals * yals) {
   assert (!yals->mt);
   if (!yals_nunsat (yals)) return 1;
   if (yals->limits.flips >= 0 &&
@@ -2868,8 +2869,8 @@ static void yals_init_inner_restart_interval (Yals * yals) {
   yals->stats.restart.inner.maxint = 0;
 }
 
-static int yals_inner_loop (Yals * yals) {
-  int res = 0;
+static long long yals_inner_loop (Yals * yals) {
+  long long res = 0;
   yals_init_inner_restart_interval (yals);
   LOG ("entering yals inner loop");
   while (!(res = yals_done (yals)) && !yals_need_to_restart_outer (yals))
@@ -2937,9 +2938,9 @@ static void yals_outer_loop (Yals * yals) {
 /*------------------------------------------------------------------------*/
 
 static void yals_check_assignment (Yals * yals) {
-  const int * c = yals->cdb.start;
+  const long long * c = yals->cdb.start;
   while (c < yals->cdb.top) {
-    int satisfied = 0, lit;
+    long long satisfied = 0, lit;
     while ((lit = *c++))
       satisfied += yals_best (yals, lit);
     if (!satisfied)
@@ -2948,9 +2949,9 @@ static void yals_check_assignment (Yals * yals) {
   }
 }
 
-static int yals_lkhd_internal (Yals * yals) {
+static long long yals_lkhd_internal (Yals * yals) {
   int64_t maxflips;
-  int res = 0, idx;
+  long long res = 0, idx;
   if (!yals->flips) goto DONE;
   maxflips = -1;
   for (idx = 1; idx < yals->nvars; idx++) {
@@ -2966,8 +2967,8 @@ DONE:
   return res;
 }
 
-int yals_sat (Yals * yals) {
-  int res, limited = 0, lkhd;
+long long yals_sat (Yals * yals) {
+  long long res, limited = 0, lkhd;
 
   if (!EMPTY (yals->clause))
     yals_abort (yals, "added clause incomplete in 'yals_sat'");
@@ -3041,13 +3042,13 @@ int yals_sat (Yals * yals) {
 
 /*------------------------------------------------------------------------*/
 
-int yals_deref (Yals * yals, int lit) {
+long long yals_deref (Yals * yals, long long lit) {
   if (!lit) yals_abort (yals, "zero literal argument to 'yals_val'");
   if (yals->mt || ABS (lit) >= yals->nvars) return lit < 0 ? 1 : -1;
   return yals_best (yals, lit) ? 1 : -1;
 }
 
-int yals_minimum (Yals * yals) { return yals->stats.best; }
+long long yals_minimum (Yals * yals) { return yals->stats.best; }
 
 long long yals_flips (Yals * yals) { return yals->stats.flips; }
 
@@ -3059,8 +3060,8 @@ long long yals_mems (Yals * yals) {
 #endif
 }
 
-int yals_lkhd (Yals * yals) {
-  int res = yals_lkhd_internal (yals);
+long long yals_lkhd (Yals * yals) {
+  long long res = yals_lkhd_internal (yals);
   if (res) 
     yals_msg (yals, 1,
       "look ahead literal %d flipped %lld times",
@@ -3072,16 +3073,16 @@ int yals_lkhd (Yals * yals) {
 
 /*------------------------------------------------------------------------*/
 
-static void yals_minlits_cidx (Yals * yals, int cidx) {
-  const int * lits, * p;
-  int lit;
+static void yals_minlits_cidx (Yals * yals, long long cidx) {
+  const long long * lits, * p;
+  long long lit;
   assert_valid_cidx (cidx);
   lits = yals_lits (yals, cidx);
   for (p = lits; (lit = *p); p++)
     if (yals_best (yals, lit))
       return;
   for (p = lits; (lit = *p); p++) {
-    int idx = ABS (lit);
+    long long idx = ABS (lit);
     assert (idx < yals->nvars);
     if (yals->mark.start[idx]) continue;
     yals->mark.start[idx] = 1;
@@ -3089,8 +3090,8 @@ static void yals_minlits_cidx (Yals * yals, int cidx) {
   }
 }
 
-const int * yals_minlits (Yals * yals) {
-  int count, cidx;
+const long long * yals_minlits (Yals * yals) {
+  long long count, cidx;
   RELEASE (yals->mark);
   while (COUNT (yals->mark) < yals->nvars)
     PUSH (yals->mark, 0);
@@ -3140,7 +3141,7 @@ void yals_stats (Yals * yals) {
     "cached %lld assignments, %lld replaced %.0f%%, %lld skipped, %d size",
     (long long) sum,
     (long long) s->cache.replaced, yals_pct (s->cache.replaced, sum),
-    (long long) s->cache.skipped, (int) COUNT (yals->cache));
+    (long long) s->cache.skipped, (long long) COUNT (yals->cache));
   sum = s->sig.falsepos + s->sig.truepos;
   yals_msg (yals, 0,
     "%lld sigchecks, %lld negative %.0f%%, "
@@ -3183,7 +3184,7 @@ void yals_stats (Yals * yals) {
   if (s->inc && s->dec) {
     double suminc, sumdec, f = s->flips;
     int64_t ninc, ndec, ninclarge, ndeclarge;
-    int len;
+    long long len;
     assert (!s->dec[0]);
     assert (!s->inc[yals->maxlen]);
     suminc = sumdec = ninc = ndec = ndeclarge = ninclarge = 0;
