@@ -219,26 +219,26 @@ enum ClausePicking {
   OPT (correct,0,0,1,"correct CB value depending on maximum length"); \
   OPT (crit,1,0,1,"dynamic break values (using critical lits)"); \
   OPT (defrag,1,0,1,"defragemtation of unsat queue"); \
-  OPT (fixed,4,0,INT_MAX,"fixed default strategy frequency (1=always)"); \
+  OPT (fixed,4,0,LLONG_MAX,"fixed default strategy frequency (1=always)"); \
   OPT (geomfreq,66,0,100,"geometric picking first frequency (percent)"); \
-  OPT (hitlim,-1,-1,INT_MAX,"minimum hit limit"); \
+  OPT (hitlim,-1,-1,LLONG_MAX,"minimum hit limit"); \
   OPT (keep,0,0,1,"keep assignment during restart"); \
   OPT (minchunksize,(1<<8),2,(1<<20),"minium queue chunk size"); \
   OPT (pick,4,-1,4,"-1=pbfs,0=rnd,1=bfs,2=dfs,3=rbfs,4=ubfs"); \
   OPT (pol,0,-1,1,"negative=-1 positive=1 or random=0 polarity"); \
   OPT (prep,1,0,1,"preprocessing through unit propagation"); \
-  OPT (rbfsrate,10,1,INT_MAX,"relaxed BFS rate"); \
+  OPT (rbfsrate,10,1,LLONG_MAX,"relaxed BFS rate"); \
   OPT (reluctant,1,0,1,"reluctant doubling of restart interval"); \
-  OPT (restart,100000,0,INT_MAX,"basic (inner) restart interval"); \
+  OPT (restart,100000,0,LLONG_MAX,"basic (inner) restart interval"); \
   OPT (restartouter,0,0,1,"enable restart outer"); \
-  OPT (restartouterfactor,100,1,INT_MAX,"outer restart interval factor"); \
+  OPT (restartouterfactor,100,1,LLONG_MAX,"outer restart interval factor"); \
   OPT (setfpu,1,0,1,"set FPU to use double precision on Linux"); \
-  OPT (termint,1000,0,INT_MAX,"termination call back check interval"); \
+  OPT (termint,1000,0,LLONG_MAX,"termination call back check interval"); \
   OPT (toggleuniform,0,0,1,"toggle uniform strategy"); \
   OPT (unfairfreq,50,0,100,"unfair picking first frequency (percent)"); \
   OPT (uni,0,-1,1,"weighted=0,uni=1,antiuni=-1 clause weights"); \
   OPT (unipick,-1,-1,4,"clause picking strategy for uniform formulas"); \
-  OPT (unirestarts,0,0,INT_MAX,"max number restarts for uniform formulas"); \
+  OPT (unirestarts,0,0,LLONG_MAX,"max number restarts for uniform formulas"); \
   OPT (verbose,0,0,2,"set verbose level"); \
   OPT (weight,5,1,7,"maximum clause weight"); \
   OPT (witness,1,0,1,"print witness"); \
@@ -2007,7 +2007,7 @@ static void yals_connect (Yals * yals) {
 
   maxlen = 0;
   sumlen = 0;
-  minlen = INT_MAX;
+  minlen = LLONG_MAX;
   nclauses = nbin = ntrn = nquad = nlarge = 0;
 
   for (p = yals->cdb.start; p < yals->cdb.top; p = q + 1) {
@@ -2044,10 +2044,10 @@ static void yals_connect (Yals * yals) {
   NEWN (yals->stats.dec, yals->stats.nincdec);
 #endif
 
-  if ((INT_MAX >> LENSHIFT) < nclauses)
+  if ((LLONG_MAX >> LENSHIFT) < nclauses)
     yals_abort (yals,
-      "maximum number of clauses %d exceeded",
-      (INT_MAX >> LENSHIFT));
+      "maximum number of clauses %lld exceeded",
+      (LLONG_MAX >> LENSHIFT));
 
   yals->nclauses = nclauses;
   yals->nbin = nbin;
@@ -2069,7 +2069,7 @@ static void yals_connect (Yals * yals) {
   count += nvars;
 
   maxidx = maxoccs = -1;
-  minoccs = INT_MAX;
+  minoccs = LLONG_MAX;
   sumoccs = 0;
 
   for (cidx = 0; cidx < yals->nclauses; cidx++) {
@@ -2413,10 +2413,10 @@ Yals * yals_new_with_mem_mgr (void * mgr,
   yals->mem.malloc = m;
   yals->mem.realloc = r;
   yals->mem.free = f;
-  yals->stats.tmp = INT_MAX;
-  yals->stats.best = INT_MAX;
-  yals->stats.last = INT_MAX;
-  yals->limits.report.min = INT_MAX;
+  yals->stats.tmp = LLONG_MAX;
+  yals->stats.best = LLONG_MAX;
+  yals->stats.last = LLONG_MAX;
+  yals->limits.report.min = LLONG_MAX;
   yals_inc_allocated (yals, sizeof *yals);
   yals_srand (yals, 0);
   yals_initopts (yals);
@@ -2426,7 +2426,7 @@ Yals * yals_new_with_mem_mgr (void * mgr,
   yals->limits.mems = -1;
 #endif
 #ifndef NYALSTATS
-  yals->stats.wb.min = UINT_MAX;
+  yals->stats.wb.min = ULLONG_MAX;
   yals->stats.wb.max = 0;
 #endif
 #if 0
@@ -2594,11 +2594,11 @@ void yals_add (Yals * yals, long long lit) {
   if (lit) {
     signed char mark;
     long long idx;
-    if (lit == INT_MIN)
-      yals_abort (yals, "can not add 'INT_MIN' as literal");
+    if (lit == LLONG_MIN)
+      yals_abort (yals, "can not add 'LLONG_MIN' as literal");
     idx = ABS (lit);
-    if (idx == INT_MAX)
-      yals_abort (yals, "can not add 'INT_MAX' as literal");
+    if (idx == LLONG_MAX)
+      yals_abort (yals, "can not add 'LLONG_MAX' as literal");
     if (idx >= yals->nvars) yals->nvars = idx + 1;
     while (idx >= COUNT (yals->mark)) PUSH (yals->mark, 0);
     mark = PEEK (yals->mark, idx);
@@ -2681,8 +2681,8 @@ static long long yals_rand_opt (Yals * yals, Opt * opt, const char * name) {
     r = yals_rand_mod (yals, mod);
     res = (int)(r + (unsigned) opt->min);
   } else {
-    assert (opt->min == INT_MIN);
-    assert (opt->max == INT_MAX);
+    assert (opt->min == LLONG_MIN);
+    assert (opt->max == LLONG_MAX);
     res = (int) yals_rand (yals);
   }
   assert (opt->min <= res), assert (res <= opt->max);
@@ -2818,7 +2818,7 @@ static void yals_restart_inner (Yals * yals) {
     yals_fix_strategy (yals);
     yals_pick_assignment (yals, 0);
     yals_update_sat_and_unsat (yals);
-    yals->stats.tmp = INT_MAX;
+    yals->stats.tmp = LLONG_MAX;
     yals_save_new_minimum (yals);
   }
   yals->stats.last = yals->stats.best;
@@ -2927,7 +2927,7 @@ static void yals_outer_loop (Yals * yals) {
     yals_fix_strategy (yals);
     yals_pick_assignment (yals, 1);
     yals_update_sat_and_unsat (yals);
-    yals->stats.tmp = INT_MAX;
+    yals->stats.tmp = LLONG_MAX;
     yals_save_new_minimum (yals);
     yals->stats.last = yals_nunsat (yals);
     if (yals_inner_loop (yals)) return;
