@@ -402,7 +402,7 @@ static int setdone (int w, int r) {
   return res;
 }
 
-static int terminate (void * dummy) {
+static long long terminate (void * dummy) {
   int res;
   (void) dummy;
   LOCK (done);
