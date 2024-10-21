@@ -1,6 +1,6 @@
 YalSAT
 
-This is yet another local search SAT solver.
+This is yet another local search SAT solver. Originally by Armin Biere, I only made a few changes so it compiles on a modern C++ compiler.
 
 To build run './configure.sh && make'.  See also './configure.sh -h',
 particularly the usage of './configure.sh -g' to compile a version
